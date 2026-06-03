@@ -8,17 +8,26 @@ if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
 
 Write-Host " 脚本已运行在 Administrator 权限下。`n" -ForegroundColor Green
 
-Write-Host " ===========================================" -ForegroundColor Yellow
-Write-Host "    模型选择：1-DeepSeek | 2-Xiaomi Mimo" -ForegroundColor Yellow
-Write-Host " ===========================================" -ForegroundColor Yellow
+Write-Host " ==================================================================" -ForegroundColor Yellow
+Write-Host "               模型选择：1-DeepSeek | 2-Xiaomi mimo" -ForegroundColor Yellow
+Write-Host " ==================================================================" -ForegroundColor Yellow
 
 # 获取模型选择
 $modelChoice = Read-Host " 请输入选择项"
 
-if ($modelChoice -eq 1) {
+if ($modelChoice -eq "1") {
     Write-Host " 你选择了 DeepSeek 模型。`n`n" -ForegroundColor Green
-} elseif ($modelChoice -eq 2) {
-    Write-Host " 你选择了 Xiaomi Mimo 模型。`n`n" -ForegroundColor Green
+} elseif ($modelChoice -eq "2") {
+    Write-Host " ==================================================================" -ForegroundColor Yellow
+    Write-Host "         mimo 系列模型选择：1-mimo-v2.5-pro | 2-mimo-v2.5" -ForegroundColor Yellow
+    Write-Host "  mimo-v2.5-pro 不支持多模态；mimo-v2.5 支持图片、视频、音频输入。" -ForegroundColor White
+    Write-Host " ==================================================================" -ForegroundColor Yellow
+    $mimoChoice = Read-Host " 请输入选择项"
+    if ($mimoChoice -eq "1") {
+      Write-Host " 你选择了 Xiaomi mimo-v2.5-pro 模型。`n`n" -ForegroundColor Green
+    } else {
+      Write-Host " 你选择了 Xiaomi mimo-v2.5 模型。`n`n" -ForegroundColor Green
+    }
 } else {
     Write-Host " 无效的选择，请输入 1 或 2。" -ForegroundColor Red
     exit
@@ -32,13 +41,11 @@ Write-Host " ===========================================" -ForegroundColor Yello
 $api = Read-Host " 请输入API Key"
 
 # 编辑 Claude 配置文件
-Set-Location "C:\Users\$env:USERNAME\.claude"
-$settingsPath = ".\settings.json"
-
-# 如果 settings.json 文件不存在，创建一个新的空文件
-if (-Not (Test-Path -Path $settingsPath)) {
-    New-Item -Path $settingsPath -ItemType File -Force
+$claudeDir = "C:\Users\$env:USERNAME\.claude"
+if (-Not (Test-Path -Path $claudeDir)) {
+    New-Item -Path $claudeDir -ItemType Directory -Force | Out-Null
 }
+$settingsPath = "$claudeDir\settings.json"
 
 $deepseekConfig = @"
 {
@@ -58,7 +65,20 @@ $deepseekConfig = @"
 }
 "@
 
-$xiaomiMimoConfig = @"
+$xiaomiMimov25Config = @"
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://api.xiaomimimo.com/anthropic",
+    "ANTHROPIC_AUTH_TOKEN": "$api",
+    "ANTHROPIC_MODEL": "mimo-v2.5",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "mimo-v2.5",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "mimo-v2.5",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "mimo-v2.5"
+  }
+}
+"@
+
+$xiaomiMimov25pConfig = @"
 {
   "env": {
     "ANTHROPIC_BASE_URL": "https://api.xiaomimimo.com/anthropic",
@@ -72,12 +92,16 @@ $xiaomiMimoConfig = @"
 "@
 
 if ($modelChoice -eq "1") {
-  Set-Content -Path $settingsPath -Value $deepseekConfig -Encoding UTF8
+  [System.IO.File]::WriteAllText($settingsPath, $deepseekConfig, [System.Text.UTF8Encoding]::new($false))
 } else {
-  Set-Content -Path $settingsPath -Value $xiaomiMimoConfig -Encoding UTF8
+  if ($mimoChoice -eq "1") {
+    [System.IO.File]::WriteAllText($settingsPath, $xiaomiMimov25pConfig, [System.Text.UTF8Encoding]::new($false))
+  } else {
+    [System.IO.File]::WriteAllText($settingsPath, $xiaomiMimov25Config, [System.Text.UTF8Encoding]::new($false))
+  }
 }
 
-[Environment]::SetEnvironmentVariable("Path", "$env:Path;C:\Users\$env:USERNAME\.local\binnn", "User")
+[Environment]::SetEnvironmentVariable("Path", "$env:Path;C:\Users\$env:USERNAME\.local\bin", "User")
 
 Write-Host " 请重新启动 Claude 以应用新的配置。" -ForegroundColor Yellow
 
